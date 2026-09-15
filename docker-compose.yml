@@ -1,0 +1,73 @@
+services:
+  influxdb:
+    build:
+      context: ./images/influxdb/
+      dockerfile: ./${TYPE}/Dockerfile
+      args:
+        INFLUXDB_TAG: ${INFLUXDB_TAG}
+    image: "influxdb"
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb:Z
+      - ./influxdb/config/:/etc/influxdb/:Z
+    ports:
+      - "8086:8086"
+      - "8082:8082"
+      - "8089:8089/udp"
+
+  telegraf:
+    build:
+      context: ./images/telegraf/
+      dockerfile: ./${TYPE}/Dockerfile
+      args:
+        TELEGRAF_TAG: ${TELEGRAF_TAG}
+    image: "telegraf"
+    user: "0:0"
+    privileged: true
+    environment:
+      HOSTNAME: "telegraf-getting-started"
+    links:
+      - influxdb
+    volumes:
+      - ./telegraf/:/etc/telegraf/:Z
+      - /var/run/docker.sock:/var/run/docker.sock:Z
+    depends_on:
+      - influxdb
+
+  kapacitor:
+    build:
+      context: ./images/kapacitor/
+      dockerfile: ./${TYPE}/Dockerfile
+      args:
+        KAPACITOR_TAG: ${KAPACITOR_TAG}
+    image: "kapacitor"
+    # Volumes убраны, чтобы избежать permission denied на хосте
+    links:
+      - influxdb
+    ports:
+      - "9092:9092"
+
+  chronograf:
+    build:
+      context: ./images/chronograf
+      dockerfile: ./${TYPE}/Dockerfile
+      args:
+        CHRONOGRAF_TAG: ${CHRONOGRAF_TAG}
+    image: "chrono_config"
+    environment:
+      RESOURCES_PATH: "/usr/share/chronograf/resources"
+    # Volumes убраны, чтобы избежать permission denied на хосте
+    links:
+      - influxdb
+      - kapacitor
+    ports:
+      - "8888:8888"
+    depends_on:
+      - kapacitor
+      - influxdb
+      - telegraf
+
+  documentation:
+    build:
+      context: ./documentation
+    ports:
+      - "3010:3000"

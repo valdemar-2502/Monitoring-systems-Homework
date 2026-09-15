@@ -1,0 +1,6 @@
+chronograf/data/
+influxdb/data/
+kapacitor/data/
+.env
+.env-latest
+.env-nightlies
